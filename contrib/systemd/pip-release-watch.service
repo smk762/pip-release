@@ -1,0 +1,16 @@
+[Unit]
+Description=Watch PyPI and draft release announcements
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=@ROOT@
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=%t/bus
+Environment=PIP_RELEASE_UI_URL=http://127.0.0.1:8787
+ExecStart=@BIN@ watch
+Restart=on-failure
+RestartSec=15
+
+[Install]
+WantedBy=default.target

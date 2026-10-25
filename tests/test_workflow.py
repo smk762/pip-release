@@ -1,9 +1,10 @@
 import json
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
 from pip_release.config import Destination, load_config
-from pip_release.models import APPROVED, HANDED_OFF, PENDING, PUBLISHED
+from pip_release.models import APPROVED, HANDED_OFF, PENDING, PUBLISHED, Draft
 from pip_release.platforms import (
     DiscordPublisher,
     PatreonPublisher,
@@ -11,7 +12,15 @@ from pip_release.platforms import (
     load_publishers,
 )
 from pip_release.store import Store
-from pip_release.workflow import ReviewError, approve, poll, publish_draft, reject
+from pip_release.workflow import (
+    ReviewError,
+    approve,
+    desktop_notice,
+    poll,
+    publish_draft,
+    reject,
+    reminder_due,
+)
 
 
 class FakeHttp:
@@ -224,3 +233,42 @@ def store_draft_like():
 
 def test_destination_round_trip_unused():
     assert Destination(enabled=False).enabled is False
+
+
+def test_desktop_notice_groups_a_release_and_includes_the_review_url():
+    first = store_draft_like()
+    second = Draft(
+        id=2,
+        project="demo",
+        version="1",
+        platform="twitter",
+        title="",
+        body="tweet",
+        link=first.link,
+        status=PENDING,
+        edited=False,
+        created_at="",
+        updated_at="",
+        note=None,
+        external_id=None,
+        error=None,
+    )
+    notice = desktop_notice([first, second], "http://127.0.0.1:8787/")
+    assert notice is not None
+    summary, body = notice
+    assert summary == "2 PyPI drafts waiting"
+    assert body == "demo 1\nhttp://127.0.0.1:8787/"
+    assert desktop_notice([], "") is None
+    still = desktop_notice([first], "http://127.0.0.1:8787/", still_waiting=True)
+    assert still is not None
+    assert still[0] == "PyPI draft still waiting"
+
+
+def test_reminder_is_due_after_24_hours():
+    now = datetime(2026, 10, 25, 12, 0, tzinfo=timezone.utc)
+    assert reminder_due(None, now) is True
+    assert reminder_due("not-a-date", now) is True
+    recent = (now - timedelta(hours=23, minutes=59)).isoformat()
+    assert reminder_due(recent, now) is False
+    due = (now - timedelta(hours=24)).isoformat()
+    assert reminder_due(due, now) is True

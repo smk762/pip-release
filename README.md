@@ -43,7 +43,17 @@ pip-release publish 1
 pip-release publish --approved --dry-run
 ```
 
-`pip-release watch` repeats `poll` on `poll.interval_seconds` (at least 60, default 1800). A new draft can also be posted as JSON to `PIP_RELEASE_REVIEW_WEBHOOK`.
+`pip-release watch` repeats `poll` on `poll.interval_seconds` (at least 60, default 1800). A new draft can also be posted as JSON to `PIP_RELEASE_REVIEW_WEBHOOK`. When `notify-send` is available, the same event raises a desktop notification that stays in the GNOME notification list. Set `PIP_RELEASE_DESKTOP_NOTIFY=0` to skip it. While any draft is still pending, that alert is repeated every 24 hours.
+
+## Start at boot
+
+On a machine with systemd, install user services for the watcher and the review UI:
+
+```bash
+contrib/install-user-services.sh
+```
+
+They start at login, and at boot as well when lingering is enabled for your user. The script tries `loginctl enable-linger`. The review page stays on `http://127.0.0.1:8787/`. Notifications are sent on the session bus, so they show up after you are logged into the desktop.
 
 Exit status is 1 when a project could not be read. Drafts that fail to publish stay `failed` and can be published again.
 

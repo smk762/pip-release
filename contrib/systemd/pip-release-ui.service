@@ -1,0 +1,15 @@
+[Unit]
+Description=pip-release review UI
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=@ROOT@
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=%t/bus
+Environment=PIP_RELEASE_UI_URL=http://127.0.0.1:8787
+ExecStart=@BIN@ ui --host 127.0.0.1 --port 8787
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

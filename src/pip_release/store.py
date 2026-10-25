@@ -21,6 +21,10 @@ CREATE TABLE IF NOT EXISTS seen (
     seen_at TEXT NOT NULL,
     PRIMARY KEY (project, version)
 );
+CREATE TABLE IF NOT EXISTS meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS drafts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     project TEXT NOT NULL,
@@ -133,6 +137,17 @@ class Store:
     def get(self, draft_id: int) -> Draft | None:
         row = self.conn.execute("SELECT * FROM drafts WHERE id = ?", (draft_id,)).fetchone()
         return _draft(row) if row else None
+
+    def get_meta(self, key: str) -> str | None:
+        row = self.conn.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
+        return str(row["value"]) if row else None
+
+    def set_meta(self, key: str, value: str) -> None:
+        self.conn.execute(
+            "INSERT INTO meta (key, value) VALUES (?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (key, value),
+        )
 
     def list_drafts(
         self,

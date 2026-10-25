@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
+from datetime import datetime, timedelta, timezone
 
 from pip_release.config import Config, normalize_name
 from pip_release.http import Http, HttpError, check_url, send_json
@@ -24,6 +25,9 @@ from pip_release.pypi import fetch_release, list_versions
 from pip_release.store import Store
 
 log = logging.getLogger(__name__)
+
+REMINDER_AFTER = timedelta(hours=24)
+REMINDER_KEY = "pending_reminder_at"
 
 
 class ReviewError(Exception):
@@ -161,13 +165,55 @@ def _draft_release(
     return PollEvent("draft", project, version, detail=", ".join(labels), draft_ids=ids)
 
 
-def notify_review(http: Http, env: Mapping[str, str], drafts: list[Draft]) -> None:
+def reminder_due(last: str | None, now: datetime, interval: timedelta = REMINDER_AFTER) -> bool:
+    """True when pending drafts should be raised again."""
+
+    if not last:
+        return True
+    try:
+        previous = datetime.fromisoformat(last)
+    except ValueError:
+        return True
+    if previous.tzinfo is None:
+        previous = previous.replace(tzinfo=timezone.utc)
+    return now - previous >= interval
+
+
+def desktop_notice(
+    drafts: list[Draft], review_url: str, *, still_waiting: bool = False
+) -> tuple[str, str] | None:
+    """Summary and body for a desktop notification. None when there is nothing to say."""
+
+    if not drafts:
+        return None
+    releases: list[str] = []
+    for draft in drafts:
+        label = f"{draft.project} {draft.version}"
+        if label not in releases:
+            releases.append(label)
+    count = len(drafts)
+    if still_waiting:
+        summary = "PyPI draft still waiting" if count == 1 else f"{count} PyPI drafts still waiting"
+    else:
+        summary = "PyPI draft waiting" if count == 1 else f"{count} PyPI drafts waiting"
+    lines = releases[:6]
+    extra = len(releases) - len(lines)
+    if extra:
+        lines.append(f"and {extra} more")
+    if review_url:
+        lines.append(review_url)
+    return summary, "\n".join(lines)
+
+
+def notify_review(
+    http: Http, env: Mapping[str, str], drafts: list[Draft], *, event: str = "drafts.created"
+) -> None:
     url = (env.get("PIP_RELEASE_REVIEW_WEBHOOK") or "").strip()
     if not url or not drafts:
         return
     check_url(url)
     payload = {
-        "event": "drafts.created",
+        "event": event,
         "drafts": [
             {
                 "id": draft.id,

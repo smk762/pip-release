@@ -10,6 +10,7 @@ import subprocess
 import sys
 import time
 from collections.abc import Mapping, Sequence
+from datetime import datetime, timezone
 from pathlib import Path
 
 from pip_release.config import (
@@ -21,7 +22,7 @@ from pip_release.config import (
     resolve_config_path,
 )
 from pip_release.http import HttpClient, HttpError
-from pip_release.models import APPROVED, Draft
+from pip_release.models import APPROVED, PENDING, Draft
 from pip_release.platforms import Publisher, load_publishers
 from pip_release.pypi import ProfileUnavailable, discover_projects
 from pip_release.store import Store
@@ -32,8 +33,11 @@ from pip_release.workflow import (
     approve,
     confirm,
     edit_draft,
+    desktop_notice,
+    REMINDER_KEY,
     notify_review,
     poll,
+    reminder_due,
     publish_draft,
     reject,
 )
@@ -180,8 +184,61 @@ def cmd_poll(config: Config, store: Store, http: HttpClient, publishers: list[Pu
             notify_review(http, os.environ, drafts)
         except (HttpError, OSError, ValueError) as exc:
             print(f"Review notification failed: {exc}", file=sys.stderr)
+        _desktop_notify(drafts)
+        _mark_reminder(store)
+    else:
+        _remind_pending(store, http)
     _heartbeat(config)
     return 1 if errors else 0
+
+
+def _remind_pending(store: Store, http: HttpClient) -> None:
+    pending = store.list_drafts(status=PENDING)
+    if not pending:
+        return
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    if not reminder_due(store.get_meta(REMINDER_KEY), now):
+        return
+    review = (os.environ.get("PIP_RELEASE_UI_URL") or "").strip()
+    print(f"Reminder: {len(pending)} draft(s) still waiting" + (f" — {review}" if review else ""))
+    try:
+        notify_review(http, os.environ, pending, event="drafts.waiting")
+    except (HttpError, OSError, ValueError) as exc:
+        print(f"Review reminder failed: {exc}", file=sys.stderr)
+    _desktop_notify(pending, still_waiting=True)
+    _mark_reminder(store, now)
+
+
+def _mark_reminder(store: Store, now: datetime | None = None) -> None:
+    stamp = now or datetime.now(timezone.utc).replace(microsecond=0)
+    store.set_meta(REMINDER_KEY, stamp.isoformat())
+
+
+def _desktop_notify(drafts: list[Draft], *, still_waiting: bool = False) -> None:
+    flag = (os.environ.get("PIP_RELEASE_DESKTOP_NOTIFY") or "1").strip().lower()
+    if flag in {"0", "false", "no", "off"}:
+        return
+    review = (os.environ.get("PIP_RELEASE_UI_URL") or "").strip()
+    notice = desktop_notice(drafts, review, still_waiting=still_waiting)
+    binary = shutil.which("notify-send")
+    if notice is None or not binary:
+        return
+    summary, body = notice
+    try:
+        subprocess.run(
+            [
+                binary,
+                "--app-name=pip-release",
+                "--icon=software-update-available",
+                "--urgency=normal",
+                summary,
+                body,
+            ],
+            check=False,
+            timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        print(f"Desktop notification failed: {exc}", file=sys.stderr)
 
 
 def cmd_watch(config: Config, store: Store, http: HttpClient, publishers: list[Publisher]) -> int:
