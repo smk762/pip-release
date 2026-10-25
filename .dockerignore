@@ -1,0 +1,11 @@
+.git
+.venv
+.env
+.pip-release
+__pycache__
+*.egg-info
+research_notes
+reports
+tests
+.pytest_cache
+config.yaml

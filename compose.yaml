@@ -1,0 +1,60 @@
+name: pip-release
+
+services:
+  watcher:
+    build: .
+    image: pip-release:local
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PIP_RELEASE_CONFIG: /config/config.yaml
+      PIP_RELEASE_STORE: /data/state.sqlite
+      PIP_RELEASE_HEARTBEAT: /data/heartbeat
+      PIP_RELEASE_UI_URL: http://127.0.0.1:8787
+    volumes:
+      - ./config.yaml:/config/config.yaml:ro
+      - pip-release-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "pip-release", "healthcheck"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+  review:
+    image: pip-release:local
+    command: ["ui", "--host", "0.0.0.0", "--port", "8787"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PIP_RELEASE_CONFIG: /config/config.yaml
+      PIP_RELEASE_STORE: /data/state.sqlite
+      PIP_RELEASE_UI_URL: http://127.0.0.1:8787
+    ports:
+      - "127.0.0.1:8787:8787"
+    volumes:
+      - ./config.yaml:/config/config.yaml:ro
+      - pip-release-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    depends_on:
+      - watcher
+
+volumes:
+  pip-release-data:

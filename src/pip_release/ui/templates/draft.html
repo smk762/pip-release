@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}{{ draft.project }} {{ draft.version }}{% endblock %}
+{% block body %}
+<p class="back"><a href="/?status=open">Back to review</a></p>
+<article class="sheet">
+  <header class="sheet-head">
+    <div>
+      <p class="kicker">{{ label }}</p>
+      <h1>{{ draft.project }} {{ draft.version }}</h1>
+      <p class="meta">
+        <span class="status status-{{ draft.status }}">{{ status_label }}</span>
+        <a href="{{ draft.link }}">Release page</a>
+        {% if draft.edited %}<span>Edited</span>{% endif %}
+      </p>
+    </div>
+  </header>
+  {% if draft.error %}
+  <p class="flash flash-bad" role="status">{{ draft.error }}</p>
+  {% endif %}
+  {% if draft.note %}
+  <p class="note">{{ draft.note }}</p>
+  {% endif %}
+  {% if handoff %}
+  <section class="handoff">
+    <h2>Paste into Patreon</h2>
+    <p>Open <a href="{{ handoff.url }}">{{ handoff.url }}</a>, create the post, then confirm below.</p>
+    <label for="handoff-title">Title</label>
+    <textarea id="handoff-title" readonly rows="2">{{ handoff.title }}</textarea>
+    <label for="handoff-html">HTML</label>
+    <textarea id="handoff-html" readonly rows="12">{{ handoff.html }}</textarea>
+    <form method="post" action="/drafts/{{ draft.id }}/confirm">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit" class="primary">I published this on Patreon</button>
+    </form>
+  </section>
+  {% endif %}
+  <form method="post" action="/drafts/{{ draft.id }}/save" class="editor">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    {% if show_title %}
+    <label for="title">Title</label>
+    <input id="title" name="title" value="{{ draft.title }}" maxlength="300" {% if not can_edit %}readonly{% endif %}>
+    {% else %}
+    <input type="hidden" name="title" value="{{ draft.title }}">
+    {% endif %}
+    <label for="body">Post</label>
+    <textarea id="body" name="body" rows="14" {% if not can_edit %}readonly{% endif %}>{{ draft.body }}</textarea>
+    <p class="count" data-for="body" data-limit="{{ limit }}" {% if weighted %}data-weighted="1"{% endif %}>
+      <span class="count-value">0</span> / {{ limit }}{% if weighted %} · a URL counts as 23{% endif %}
+    </p>
+    <div class="actions">
+      {% if can_edit %}
+      <button type="submit">Save</button>
+      {% endif %}
+      {% if can_approve %}
+      <button type="submit" class="primary" formaction="/drafts/{{ draft.id }}/approve">Approve</button>
+      {% endif %}
+    </div>
+    {% if can_edit %}
+    <p class="hint">Saving, or editing before approve, leaves the draft pending.</p>
+    {% endif %}
+  </form>
+  <div class="side-actions">
+    {% if can_publish %}
+    <form method="post" action="/drafts/{{ draft.id }}/publish">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit" class="primary">Publish</button>
+    </form>
+    {% endif %}
+    {% if can_reject %}
+    <form method="post" action="/drafts/{{ draft.id }}/reject" class="reject-form">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label for="note">Note, optional</label>
+      <input id="note" name="note" value="">
+      <button type="submit" class="danger">Reject</button>
+    </form>
+    {% endif %}
+  </div>
+</article>
+{% endblock %}

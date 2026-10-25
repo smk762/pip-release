@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Review{% endblock %} · pip-release</title>
+  <link rel="stylesheet" href="/static/review.css">
+</head>
+<body>
+  <header class="top">
+    <a class="mark" href="/">pip-release</a>
+    {% if filters %}
+    <nav class="filters" aria-label="Draft status">
+      {% for item in filters %}
+      <a href="/?status={{ item.id }}" {% if item.id == status %}aria-current="page"{% endif %}>{{ item.label }}</a>
+      {% endfor %}
+    </nav>
+    {% endif %}
+  </header>
+  {% if accounts and (accounts.profiles or accounts.destinations) %}
+  <nav class="accounts" aria-label="Tracked profiles">
+    {% if accounts.profiles %}
+    <span class="accounts-label">Tracking</span>
+    {% for item in accounts.profiles %}
+    <a href="{{ item.href }}" target="_blank" rel="noopener noreferrer">{{ item.label }}</a>
+    {% endfor %}
+    {% endif %}
+    {% if accounts.destinations %}
+    <span class="accounts-label">Publishing</span>
+    {% for item in accounts.destinations %}
+    <a href="{{ item.href }}" target="_blank" rel="noopener noreferrer">{{ item.label }}</a>
+    {% endfor %}
+    {% endif %}
+  </nav>
+  {% endif %}
+  {% if flash %}
+  <p class="flash flash-{{ flash.kind }}" role="status">{{ flash.text }}</p>
+  {% endif %}
+  <main>
+    {% block body %}{% endblock %}
+  </main>
+  <script src="/static/review.js"></script>
+</body>
+</html>

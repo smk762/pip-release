@@ -1,0 +1,37 @@
+[project]
+name = "pip-release"
+version = "0.1.0"
+description = "Draft PyPI release announcements and hold them for approval before publishing."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "PyYAML>=6",
+    "itsdangerous>=2",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.9",
+    "starlette>=0.41",
+    "uvicorn>=0.32",
+]
+
+[project.scripts]
+pip-release = "pip_release.cli:main"
+
+[project.entry-points."pip_release.platforms"]
+twitter = "pip_release.platforms:TwitterPublisher"
+discord = "pip_release.platforms:DiscordPublisher"
+telegram = "pip_release.platforms:TelegramPublisher"
+patreon = "pip_release.platforms:PatreonPublisher"
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/pip_release/ui/templates" = "pip_release/ui/templates"
+"src/pip_release/ui/static" = "pip_release/ui/static"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

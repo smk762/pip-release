@@ -1,0 +1,34 @@
+# Development fixture. Public identities only.
+# PyPI does not publish a per-user release feed, and the profile page is often
+# behind a client challenge, so the projects are listed here.
+
+pypi:
+  user: dragonhound_dev
+  projects:
+    - argus-atlas
+    - argus-lens
+    - argus-cortex
+    - argus-quarry
+    - argus-forge
+    - argus-proof
+    - argus-curator
+  ignore: []
+
+destinations:
+  twitter:
+    enabled: true
+    username: dragonhound3
+  patreon:
+    enabled: true
+    name: AtlasRealms
+    url: https://www.patreon.com/c/AtlasRealms
+  discord:
+    enabled: false
+  telegram:
+    enabled: false
+
+poll:
+  interval_seconds: 1800
+
+store:
+  path: .pip-release/state.sqlite

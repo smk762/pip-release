@@ -1,0 +1,27 @@
+# Public identities only. Copy to config.yaml and replace the values.
+# Secrets belong in .env. See .env.example.
+
+pypi:
+  user: your-pypi-username
+  projects:
+    - your-project
+  ignore: []
+
+destinations:
+  twitter:
+    enabled: true
+    username: your-x-username
+  discord:
+    enabled: false
+  telegram:
+    enabled: false
+  patreon:
+    enabled: false
+    name: YourCampaign
+    url: https://www.patreon.com/c/YourCampaign
+
+poll:
+  interval_seconds: 1800
+
+store:
+  path: .pip-release/state.sqlite

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Review{% endblock %}
+{% block body %}
+<section class="lede">
+  <h1>Review</h1>
+  <p>Drafts wait here until you approve them. Nothing is published from this page until you choose Publish.</p>
+</section>
+{% if not groups %}
+<p class="empty">Nothing in this list. New PyPI releases show up after the next poll.</p>
+{% endif %}
+{% for group in groups %}
+<article class="release">
+  <header class="release-head">
+    <div>
+      <h2>{{ group.project }} <span>{{ group.version }}</span></h2>
+      <a class="quiet" href="{{ group.link }}">PyPI release</a>
+    </div>
+    {% if group.pending %}
+    <form method="post" action="/releases/approve">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="project" value="{{ group.project }}">
+      <input type="hidden" name="version" value="{{ group.version }}">
+      <button type="submit">Approve {{ group.pending }} pending</button>
+    </form>
+    {% endif %}
+  </header>
+  <ul class="cards">
+    {% for draft in group.drafts %}
+    <li class="card">
+      <div class="card-top">
+        <span class="platform">{{ draft.platform }}</span>
+        <span class="status status-{{ draft.status }}">{{ status_label[draft.status] }}</span>
+      </div>
+      <p class="excerpt">{{ draft.body }}</p>
+      <a class="open" href="/drafts/{{ draft.id }}">Open #{{ draft.id }}</a>
+    </li>
+    {% endfor %}
+  </ul>
+</article>
+{% endfor %}
+{% endblock %}
